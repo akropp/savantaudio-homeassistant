@@ -3,20 +3,19 @@ from __future__ import annotations
 
 import logging
 
-import savantaudio.client as sa
-
 from homeassistant.components.media_player import (
     PLATFORM_SCHEMA,
+    MediaPlayerDeviceClass,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
-    MediaPlayerDeviceClass,
 )
 from homeassistant.components.media_player.const import DOMAIN
 from homeassistant.const import (
     ATTR_ENTITY_ID,
+    CONF_DEVICE,
     CONF_HOST,
-    CONF_PORT,
     CONF_NAME,
+    CONF_PORT,
     STATE_OFF,
     STATE_ON,
 )
@@ -24,14 +23,20 @@ from homeassistant.core import HomeAssistant, ServiceCall
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+import savantaudio.client as sa
+
+from .const import (
+    DEFAULT_DEVICE,
+    DEFAULT_INPUTS,
+    DEFAULT_NAME,
+    DEFAULT_OUTPUTS,
+    DEFAULT_PORT,
+    DOMAIN,
+    KNOWN_OUTPUTS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-from .const import (
-    DOMAIN,
-    KNOWN_OUTPUTS,
-    DEFAULT_PORT,
-)
 
 CONF_INPUTS = "inputs"
 CONF_OUTPUTS = "outputs"
@@ -54,16 +59,17 @@ SUPPORT_SAVANTAUDIO = (
 )
 
 KNOWN_HOSTS: list[str] = []
-DEFAULT_INPUTS = { f'Input{n}':f'Input {n}' for n in range(1,32) }
-DEFAULT_OUTPUTS = { f'Output{n}':f'Output {n}' for n in range(1,20) }
 
 SOUND_MODE_LIST = ['stereo', 'mono', 'stereo,passthru', 'mono,passthru']
 
+SCAN_INTERVAL = timedelta(seconds=30)
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
-        vol.Optional(CONF_HOST): cv.string,
+        vol.Required(CONF_HOST): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.int,
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+        vol.Optional(CONF_DEVICE, default=DEFAULT_DEVICE): cv.string,
         vol.Optional(CONF_INPUTS, default=DEFAULT_INPUTS): {cv.string: cv.string},
         vol.Optional(CONF_OUTPUTS, default=DEFAULT_OUTPUTS): {cv.string: cv.string},
     }
@@ -71,6 +77,38 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 TIMEOUT_MESSAGE = "Timeout waiting for response."
 
+async def async_setup_entry(
+    hass: core.HomeAssistant,
+    config_entry: config_entries.ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
+    """Setup sensors from a config entry created in the integrations UI."""
+    config = hass.data[DOMAIN][config_entry.entry_id]
+    known_outputs = hass.data[DOMAIN].setdefault(KNOWN_OUTPUTS, [])
+
+    devices: list[SavantAudioOutput] = []
+
+    if CONF_HOST in config and (host := config[CONF_HOST]) not in KNOWN_HOSTS:
+        try:
+            port = config[CONF_PORT]
+            switch = sa.Switch(host=host, port=port, model=config[CONF_DEVICE])
+            await switch.refresh()
+            outputNames = conf.get(CONF_OUTPUTS)
+            for output in switch.outputs:
+                _name = f'Output{output.number}'
+                outputdevice = SavantAudioOutput(
+                        switch,
+                        config.get(CONF_INPUTS),
+                        output,
+                        outputNames[_name] if _name in outputNames else None,
+                        name=config.get(CONF_NAME),
+                    )
+                known_outputs.append(outputdevice)
+                devices.append(outputdevice)
+            KNOWN_HOSTS.append(host)
+        except OSError:
+            _LOGGER.error("Unable to connect to Savant Audio Switch at %s:%d", host, port)
+    async_add_entities(devices, True)
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -79,10 +117,6 @@ async def async_setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the SAVANTAUDIO platform."""
-
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN].setdefault(config_entry.entry_id, {})
-
     known_outputs = hass.data[DOMAIN].setdefault(KNOWN_OUTPUTS, [])
 
     devices: list[SavantAudioOutput] = []
@@ -244,7 +278,7 @@ class SavantAudioOutput(MediaPlayerEntity):
 
     async def async_turn_off(self):
         """Turn the media player off."""
-        await self._switch.unlink(self._output.nmber))
+        await self._switch.unlink(self._output.number)
 
     async def async_set_volume_level(self, volume):
         """
@@ -301,7 +335,7 @@ class SavantAudioOutput(MediaPlayerEntity):
         }
 
         for other_player in group_members:
-            if other := output_ids.get(other_player):
+            if other := output_ids.get(other_player) and other._switch.host == self._switch.host:
                 await other.async_select_source(self._current_source)
             else:
                 _LOGGER.info(
