@@ -15,4 +15,5 @@ jobs:
       - name: HACS Action
         uses: "hacs/action@main"
         with:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
           category: "integration"
