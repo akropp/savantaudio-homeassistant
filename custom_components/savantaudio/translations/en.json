@@ -1,0 +1,176 @@
+{
+  "config": {
+    "error": {
+      "user": "The host/port provided are not valid."
+    },
+    "step": {
+      "user": {
+        "data": {
+          "host": "Hostname/IP of Savant Switch",
+          "port": "Port of the Savant Switch",
+          "model": "Model of Savant Switch"
+        },
+        "description": "Enter connection info for your Savant Audio Switch.",
+        "title": "Connection"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "sources": {
+        "data": {
+          "enable_input_1": "Input 1",
+          "enable_input_2": "Input 2",
+          "enable_input_3": "Input 3",
+          "enable_input_4": "Input 4",
+          "enable_input_5": "Input 5",
+          "enable_input_6": "Input 6",
+          "enable_input_7": "Input 7",
+          "enable_input_8": "Input 8",
+          "enable_input_9": "Input 9",
+          "enable_input_10": "Input 10",
+          "enable_input_11": "Input 11",
+          "enable_input_12": "Input 12",
+          "enable_input_13": "Input 13",
+          "enable_input_14": "Input 14",
+          "enable_input_15": "Input 15",
+          "enable_input_16": "Input 16",
+          "enable_input_17": "Input 17",
+          "enable_input_18": "Input 18",
+          "enable_input_19": "Input 19",
+          "enable_input_20": "Input 20",
+          "enable_input_21": "Input 21",
+          "enable_input_22": "Input 22",
+          "enable_input_23": "Input 23",
+          "enable_input_24": "Input 24",
+          "enable_input_25": "Input 25",
+          "enable_input_26": "Input 26",
+          "enable_input_27": "Input 27",
+          "enable_input_28": "Input 28",
+          "enable_input_29": "Input 29",
+          "enable_input_30": "Input 30",
+          "enable_input_31": "Input 31",
+          "enable_input_32": "Input 32"
+        },
+        "description": "Enables Sources",
+        "title": "Enable Sources"
+      },
+      "source_names": {
+        "data": {
+          "input_1": "Input 1",
+          "input_2": "Input 2",
+          "input_3": "Input 3",
+          "input_4": "Input 4",
+          "input_5": "Input 5",
+          "input_6": "Input 6",
+          "input_7": "Input 7",
+          "input_8": "Input 8",
+          "input_9": "Input 9",
+          "input_10": "Input 10",
+          "input_11": "Input 11",
+          "input_12": "Input 12",
+          "input_13": "Input 13",
+          "input_14": "Input 14",
+          "input_15": "Input 15",
+          "input_16": "Input 16",
+          "input_17": "Input 17",
+          "input_18": "Input 18",
+          "input_19": "Input 19",
+          "input_20": "Input 20",
+          "input_21": "Input 21",
+          "input_22": "Input 22",
+          "input_23": "Input 23",
+          "input_24": "Input 24",
+          "input_25": "Input 25",
+          "input_26": "Input 26",
+          "input_27": "Input 27",
+          "input_28": "Input 28",
+          "input_29": "Input 29",
+          "input_30": "Input 30",
+          "input_31": "Input 31",
+          "input_32": "Input 32"
+        },
+        "description": "Configure Source Names",
+        "title": "Source Names"
+      },
+      "zones": {
+        "data": {
+          "enable_zone_1": "Zone 1",
+          "enable_zone_2": "Zone 2",
+          "enable_zone_3": "Zone 3",
+          "enable_zone_4": "Zone 4",
+          "enable_zone_5": "Zone 5",
+          "enable_zone_6": "Zone 6",
+          "enable_zone_7": "Zone 7",
+          "enable_zone_8": "Zone 8",
+          "enable_zone_9": "Zone 9",
+          "enable_zone_10": "Zone 10",
+          "enable_zone_11": "Zone 11",
+          "enable_zone_12": "Zone 12",
+          "enable_zone_13": "Zone 13",
+          "enable_zone_14": "Zone 14",
+          "enable_zone_15": "Zone 15",
+          "enable_zone_16": "Zone 16",
+          "enable_zone_17": "Zone 17",
+          "enable_zone_18": "Zone 18",
+          "enable_zone_19": "Zone 19",
+          "enable_zone_20": "Zone 20"
+        },
+        "description": "Enables Zones",
+        "title": "Enable Zones"
+      },
+      "zone_names": {
+        "data": {
+          "zone_1": "Zone 1",
+          "zone_2": "Zone 2",
+          "zone_3": "Zone 3",
+          "zone_4": "Zone 4",
+          "zone_5": "Zone 5",
+          "zone_6": "Zone 6",
+          "zone_7": "Zone 7",
+          "zone_8": "Zone 8",
+          "zone_9": "Zone 9",
+          "zone_10": "Zone 10",
+          "zone_11": "Zone 11",
+          "zone_12": "Zone 12",
+          "zone_13": "Zone 13",
+          "zone_14": "Zone 14",
+          "zone_15": "Zone 15",
+          "zone_16": "Zone 16",
+          "zone_17": "Zone 17",
+          "zone_18": "Zone 18",
+          "zone_19": "Zone 19",
+          "zone_20": "Zone 20"
+        },
+        "description": "Configure Zone Names",
+        "title": "Zone Names"
+      },
+      "zone_defaults": {
+        "data": {
+          "default_zone_1": "Zone 1",
+          "default_zone_2": "Zone 2",
+          "default_zone_3": "Zone 3",
+          "default_zone_4": "Zone 4",
+          "default_zone_5": "Zone 5",
+          "default_zone_6": "Zone 6",
+          "default_zone_7": "Zone 7",
+          "default_zone_8": "Zone 8",
+          "default_zone_9": "Zone 9",
+          "default_zone_10": "Zone 10",
+          "default_zone_11": "Zone 11",
+          "default_zone_12": "Zone 12",
+          "default_zone_13": "Zone 13",
+          "default_zone_14": "Zone 14",
+          "default_zone_15": "Zone 15",
+          "default_zone_16": "Zone 16",
+          "default_zone_17": "Zone 17",
+          "default_zone_18": "Zone 18",
+          "default_zone_19": "Zone 19",
+          "default_zone_20": "Zone 20"
+        },
+        "description": "Configure Zone Default Sources",
+        "title": "Default Sources"
+      }
+    }
+  }
+}

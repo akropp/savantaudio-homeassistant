@@ -6,6 +6,6 @@
   "domain": "savantaudio",
   "iot_class": "local_polling",
   "name": "Savant Audio",
-  "requirements": ["savantaudio-client=0.1.5"],
+  "requirements": ["savantaudio-client==0.1.13"],
   "version": "0.1.0"
 }

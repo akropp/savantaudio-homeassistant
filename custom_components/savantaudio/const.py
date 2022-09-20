@@ -1,9 +1,15 @@
-DOMAIN = "savantaudio"
-KNOWN_OUTPUTS = "known_outputs"
-DEFAULT_PORT = 8085
-DEFAULT_NAME = "SSA-3220"
-DEFAULT_DEVICE = "SSA-3220"
-SCAN_INTERVAL = timedelta(minutes=10)
+import savantaudio.client as sa
 
-DEFAULT_INPUTS = { f'Input{n}':f'Input {n}' for n in range(1,32) }
-DEFAULT_OUTPUTS = { f'Output{n}':f'Output {n}' for n in range(1,20) }
+DOMAIN = "savantaudio"
+KNOWN_ZONES = "known_zones"
+KNOWN_HOSTS = "known_hosts"
+DEFAULT_PORT = 8085
+DEFAULT_NAME = "Savant"
+DEFAULT_SOURCE = "default"
+CONF_NUMBER = "number"
+
+SOURCE_RANGE = range(1,33)
+ZONE_RANGE = range(1,21)
+
+CONF_SOURCES = "sources"
+CONF_ZONES = "zones"

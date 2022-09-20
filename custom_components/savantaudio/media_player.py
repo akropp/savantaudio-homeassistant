@@ -1,6 +1,8 @@
 """Support for Savant Audio Switches (SSA-3220)."""
 from __future__ import annotations
 
+import datetime
+from http.client import SWITCHING_PROTOCOLS
 import logging
 
 from homeassistant.components.media_player import (
@@ -12,7 +14,7 @@ from homeassistant.components.media_player import (
 from homeassistant.components.media_player.const import DOMAIN
 from homeassistant.const import (
     ATTR_ENTITY_ID,
-    CONF_DEVICE,
+    CONF_ENABLED,
     CONF_HOST,
     CONF_NAME,
     CONF_PORT,
@@ -20,26 +22,27 @@ from homeassistant.const import (
     STATE_ON,
 )
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 import savantaudio.client as sa
+from typing_extensions import Required
+import voluptuous as vol
 
 from .const import (
-    DEFAULT_DEVICE,
-    DEFAULT_INPUTS,
+    CONF_NUMBER,
+    CONF_SOURCES,
+    CONF_ZONES,
     DEFAULT_NAME,
-    DEFAULT_OUTPUTS,
     DEFAULT_PORT,
+    DEFAULT_SOURCE,
     DOMAIN,
-    KNOWN_OUTPUTS,
+    KNOWN_ZONES,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-
-CONF_INPUTS = "inputs"
-CONF_OUTPUTS = "outputs"
 
 ATTR_PASSTHRU = "passthru"
 ATTR_STEREO = "stereo"
@@ -62,18 +65,36 @@ KNOWN_HOSTS: list[str] = []
 
 SOUND_MODE_LIST = ['stereo', 'mono', 'stereo,passthru', 'mono,passthru']
 
-SCAN_INTERVAL = timedelta(seconds=30)
+DEFAULT_SOURCES = { n: {"name": f'Source {n}'} for n in range(1,32) }
+DEFAULT_ZONES = { n: {"name": f'Zone {n}', DEFAULT_SOURCE: None} for n in range(1,20) }
+
+
+SOURCE_IDS = vol.All(vol.Coerce(int), vol.Range(min=1, max=32))
+SOURCE_SCHEMA = vol.Schema({
+    vol.Required(CONF_NAME, default="Unknown Source"): cv.string,
+    vol.Required(CONF_ENABLED, default=True): bool,
+})
+
+ZONE_IDS = vol.All( vol.Coerce(int), vol.Range(min=1, max=20) )
+ZONE_SCHEMA = vol.Schema({
+    vol.Required(CONF_NUMBER): ZONE_IDS,
+    vol.Required(CONF_NAME, default="Audio Zone"): cv.string,
+    vol.Optional(DEFAULT_SOURCE): cv.positive_int,
+    vol.Required(CONF_ENABLED, default=True): bool,
+})
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_HOST): cv.string,
-        vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.int,
+        vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Optional(CONF_DEVICE, default=DEFAULT_DEVICE): cv.string,
-        vol.Optional(CONF_INPUTS, default=DEFAULT_INPUTS): {cv.string: cv.string},
-        vol.Optional(CONF_OUTPUTS, default=DEFAULT_OUTPUTS): {cv.string: cv.string},
+        vol.Required(CONF_ZONES): vol.Schema({cv.string: ZONE_SCHEMA}),
+        vol.Required(CONF_SOURCES): vol.Schema({SOURCE_IDS: SOURCE_SCHEMA}),
     }
 )
+
+SCAN_INTERVAL = datetime.timedelta(minutes=1)
+
 
 TIMEOUT_MESSAGE = "Timeout waiting for response."
 
@@ -83,32 +104,74 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ):
     """Setup sensors from a config entry created in the integrations UI."""
+    _LOGGER.info(f'media_player.async_setup_entry: {DOMAIN}')
     config = hass.data[DOMAIN][config_entry.entry_id]
-    known_outputs = hass.data[DOMAIN].setdefault(KNOWN_OUTPUTS, [])
+    known_zones = hass.data[DOMAIN].setdefault(KNOWN_ZONES, [])
 
-    devices: list[SavantAudioOutput] = []
+    devices: list[SavantAudioZone] = []
 
-    if CONF_HOST in config and (host := config[CONF_HOST]) not in KNOWN_HOSTS:
-        try:
-            port = config[CONF_PORT]
-            switch = sa.Switch(host=host, port=port, model=config[CONF_DEVICE])
-            await switch.refresh()
-            outputNames = conf.get(CONF_OUTPUTS)
-            for output in switch.outputs:
-                _name = f'Output{output.number}'
-                outputdevice = SavantAudioOutput(
-                        switch,
-                        config.get(CONF_INPUTS),
-                        output,
-                        outputNames[_name] if _name in outputNames else None,
-                        name=config.get(CONF_NAME),
-                    )
-                known_outputs.append(outputdevice)
-                devices.append(outputdevice)
-            KNOWN_HOSTS.append(host)
-        except OSError:
-            _LOGGER.error("Unable to connect to Savant Audio Switch at %s:%d", host, port)
+    try:
+        port = config[CONF_PORT]
+        host = config[CONF_HOST]
+        switch = sa.Switch(host=host, port=port)
+        await switch.connect()
+
+        # add device for switch
+        device_registry = dr.async_get(hass)
+
+        device_registry.async_get_or_create(
+            config_entry_id=config_entry.entry_id,
+            identifiers={(DOMAIN, switch.attributes['sn'])},
+            manufacturer="Savant",
+            name=config[CONF_NAME],
+            model=str(switch.model),
+            sw_version=switch.attributes['fwrev'],
+            hw_version=switch.attributes['rev'],
+        )
+
+        sn = switch.attributes['sn']
+        device_ids = []
+        if CONF_SOURCES in config and CONF_ZONES in config:
+            sources = {
+                int(source_id): extra[CONF_NAME] for source_id, extra in config[CONF_SOURCES].items() if extra.get(CONF_ENABLED, True)
+            }
+            for entity_id, extra in config[CONF_ZONES].items():
+                if extra.get(CONF_ENABLED, True):
+                    zonedevice = SavantAudioZone(
+                            switch,
+                            entity_id,
+                            sources,
+                            switch.output(int(extra[CONF_NUMBER])),
+                            extra[CONF_NAME],
+                            switch_name=config.get(CONF_NAME),
+                            default_source=extra.get(DEFAULT_SOURCE, None),
+                        )
+                    known_zones.append(zonedevice)
+                    devices.append(zonedevice)
+                    device_ids.append(zonedevice.unique_id)
+        if sn not in KNOWN_HOSTS:
+            KNOWN_HOSTS.append(sn)
+        unknown_zones = [zone for zone in known_zones if zone.switch.attributes['sn'] == sn and zone.unique_id not in device_ids]
+        for zone in unknown_zones:
+            known_zones.remove(zone)
+            device = device_registry.async_get_device(zone.device_info["identifiers"])
+            if device is not None:
+                device_registry.async_remove_device(device.id)
+            _LOGGER.debug(f'Removed Zone Device id={device.id}, name={zone.name}')
+
+    except OSError:
+        _LOGGER.error("Unable to connect to Savant Audio Switch at %s:%d", host, port)
     async_add_entities(devices, True)
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    known_zones = hass.data[DOMAIN].setdefault(KNOWN_ZONES, [])
+    to_remove = [ zone for zone in known_zones if zone.switch.attributes['sn'] == entry.unique_id ]
+    for zone in to_remove:
+        known_zones.remove(zone)
+
+    return True
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -117,43 +180,57 @@ async def async_setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the SAVANTAUDIO platform."""
-    known_outputs = hass.data[DOMAIN].setdefault(KNOWN_OUTPUTS, [])
+    _LOGGER.info(f'media_player.async_setup_platform: {DOMAIN}')
+    known_zones = hass.data[DOMAIN].setdefault(KNOWN_ZONES, [])
 
-    devices: list[SavantAudioOutput] = []
+    devices: list[SavantAudioZone] = []
 
-    if CONF_HOST in config and (host := config[CONF_HOST]) not in KNOWN_HOSTS:
-        try:
-            port = config[CONF_PORT]
-            switch = sa.Switch(host=host, port=port)
-            await switch.refresh()
-            outputNames = conf.get(CONF_OUTPUTS)
-            for output in switch.outputs:
-                _name = f'Output{output.number}'
-                outputdevice = SavantAudioOutput(
+    try:
+        port = config[CONF_PORT]
+        host = config[CONF_HOST]
+        switch = sa.Switch(host=host, port=port)
+        await switch.connect()
+        if switch.attributes['sn'] in KNOWN_HOSTS:
+            _LOGGER.info(f"Already added switch {switch.attributes['sn']} at {host}:{port}")
+            return
+
+        # add device for switch
+        device_registry = dr.async_get(hass)
+
+        device_registry.async_get_or_create(
+            config_entry_id=config_entry.entry_id,
+            identifiers={(DOMAIN, switch.attributes['sn'])},
+            manufacturer="Savant",
+            name=config[CONF_NAME],
+            model=str(switch.model),
+            sw_version=switch.attributes['fwrev'],
+            hw_version=switch.attributes['rev'],
+        )
+
+        if CONF_SOURCES in config:
+            sources = { int(source_id): extra[CONF_NAME] for source_id, extra in config[CONF_SOURCES].items() }
+        else:
+            sources = { n: f'Input {n}' for n in range(1,33) }
+        for entity_id, extra in config[CONF_ZONES].items():
+            if extra.get(CONF_ENABLED, True):
+                zonedevice = SavantAudioZone(
                         switch,
-                        config.get(CONF_INPUTS),
-                        output,
-                        outputNames[_name] if _name in outputNames else None,
-                        name=config.get(CONF_NAME),
+                        entity_id,
+                        sources,
+                        switch.output(int(extra[CONF_NUMBER])),
+                        extra[CONF_NAME],
+                        switch_name=config.get(CONF_NAME),
+                        default_source=extra.get(DEFAULT_SOURCE, None),
                     )
-                known_outputs.append(outputdevice)
-                devices.append(outputdevice)
-            KNOWN_HOSTS.append(host)
-        except OSError:
-            _LOGGER.error("Unable to connect to Savant Audio Switch at %s:%d", host, port)
+                known_zones.append(zonedevice)
+                devices.append(zonedevice)
+        KNOWN_HOSTS.append(switch.attributes['sn'])
+    except OSError:
+        _LOGGER.error("Unable to connect to Savant Audio Switch at %s:%d", host, port)
     async_add_entities(devices, True)
 
-def _parse_source(source: str):
-    if source.startswith('Input'):
-        return int(source[5:])
-    raise ValueError(f'Unknown Source {source}')
 
-def _parse_output(output: str):
-    if source.startswith('Output'):
-        return int(output[6:])
-    raise ValueError(f'Unknown Output {output}')
-
-class SavantAudioOutput(MediaPlayerEntity):
+class SavantAudioZone(MediaPlayerEntity):
     """Representation of an SAVANTAUDIO device."""
 
     _attr_supported_features = SUPPORT_SAVANTAUDIO
@@ -161,36 +238,56 @@ class SavantAudioOutput(MediaPlayerEntity):
     def __init__(
         self,
         switch,
-        inputs,
+        entity_id,
+        sources,
         output,
-        outputName,
-        switchName
+        zone_name: str = None,
+        switch_name: str = None,
+        default_source: int = None
     ):
         """Initialize the SAVANTAUDIO Receiver."""
         self._switch = switch
         self._output = output
+        self.entity_id = f'media_player.{entity_id}'
+        async def _output_updated(event: str, obj):
+            if event == 'output-updated' and obj.number == self._output.number:
+                await self._sync_output()
+            elif event == 'link-updated' and obj[1] == self._output.number:
+                await self._sync_link()
 
-        self._unique_id = (
-            f"{switch.host}_{switch.port}_{output.number}"
+        self._switch.add_callback(_output_updated)
+        self._switch_name = switch_name if switch_name is not None else f'{switch.model}'
+        self._default_source = default_source
+
+        self._attr_unique_id = (
+            f"{switch.attributes['sn']}_{output.number}"
         )
-        if outputName:
-            self._name = outputName
+
+        if zone_name:
+            self._attr_name = zone_name
         else:
-            self._name = self._unique_id
+            self._attr_name = f'{self._switch_name} Zone {output.number}'
 
+        if sources is None:
+            sources = DEFAULT_SOURCES
+        self.set_sources(sources)
         self._current_source = None
-        self._input_list = list(inputs.values())
-        self._source_mapping = inputs
-        self._reverse_mapping = {value: key for key, value in inputs.items()}
         self._attributes = {}
+        self._volume = 0
+        self._mute = False
+        self._pwstate = STATE_OFF
 
-    async def async_update(self):
-        """Get the latest state from the device."""
-        self._output.refresh()
-        self._switch.refresh_link(self._output.number)
+    def set_sources(self, sources):
+        self._source_list = list(sources.values())
+        self._source_mapping = sources
+        self._reverse_mapping = {value: key for key, value in sources.items()}
 
-        current_source_raw = self._switch.get_link(self._output.number)
-        if current_source_raw is not None:
+    def set_name(self, name: str):
+        self._attr_name = name
+
+    async def _sync_link(self):
+        self._current_source = await self._switch.get_link(self._output.number)
+        if self._current_source is not None:
             self._pwstate = STATE_ON
         else:
             self._pwstate = STATE_OFF
@@ -200,15 +297,9 @@ class SavantAudioOutput(MediaPlayerEntity):
             self._attributes.pop(ATTR_DELAY_RIGHT, None)
             return
 
+    async def _sync_output(self):
         volume_raw = self._output.volume
         self._mute = self._output.mute
-
-        if not (volume_raw and mute_raw and current_source_raw):
-            return
-
-        source = f'Input{current_source_raw}'
-        if source in self._source_mapping:
-            self._current_source = self._source_mapping[source]
 
         # savant volume is between -38dB and 0dB
         self._volume = (volume_raw + 38.0) / 38.0
@@ -218,15 +309,35 @@ class SavantAudioOutput(MediaPlayerEntity):
         self._attributes[ATTR_DELAY_LEFT] = self._output.delay[0]
         self._attributes[ATTR_DELAY_RIGHT] = self._output.delay[1]
 
-    @property
-    def unique_id(self):
-        """Return unique ID for this device."""
-        return self._unique_id
+    async def async_update(self):
+        """Get the latest state from the device."""
+        await self._output.refresh()
+        await self._switch.refresh_link(self._output.number)
+        await self._sync_output()
+        await self._sync_link()
 
     @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
+    def device_info(self):
+        return {
+            "identifiers": {
+                # Serial numbers are unique identifiers within a specific domain
+                (DOMAIN, self.unique_id)
+            },
+            "name": self.name,
+            "manufacturer": "Savant",
+            "model": str(self._switch.model),
+            "sw_version": self._switch.attributes['fwrev'],
+            "hw_version": self._switch.attributes['rev'],
+            "via_device": (DOMAIN, self._switch.attributes['sn']),
+        }
+
+    @property
+    def switch(self):
+        return self._switch
+
+    @property
+    def number(self):
+        return self._output.number
 
     @property
     def state(self):
@@ -241,33 +352,36 @@ class SavantAudioOutput(MediaPlayerEntity):
     @property
     def is_volume_muted(self):
         """Return boolean indicating mute status."""
-        return self._muted
+        return self._mute
 
     @property
     def source(self):
-        """Return the current input source of the device."""
-        return self._current_source
+        """Return the current source source of the device."""
+        if self._current_source is not None:
+            return self._source_mapping[self._current_source]
+        else:
+            return None
 
     @property
     def source_list(self):
-        """List of available input sources."""
+        """List of available source sources."""
         return self._source_list
 
     @property
     def extra_state_attributes(self):
         """Return device specific state attributes."""
         return self._attributes
-    
+
     @property
     def sound_mode(self):
         modes = []
-        if self._output.stereo: 
+        if self._output.stereo:
             modes.append('stereo')
         else:
             modes.append('mono')
         if self._output.passthru: modes.append('passthru')
         return ','.join(modes)
-    
+
     @property
     def sound_mode_list(self):
         return SOUND_MODE_LIST
@@ -282,7 +396,7 @@ class SavantAudioOutput(MediaPlayerEntity):
 
     async def async_set_volume_level(self, volume):
         """
-        Set volume level, input is range 0..1.
+        Set volume level, source is range 0..1.
 
         For the switch, the actual volume level is -38..0
         """
@@ -304,21 +418,26 @@ class SavantAudioOutput(MediaPlayerEntity):
 
     async def async_turn_on(self):
         """Turn the media player on."""
-        if self._current_source and self._current_source in self._source_list:
-            source = self._reverse_mapping[source]
-            await self._switch.link(self._output.number, _parse_source(source))
+        if self._pwstate == STATE_OFF and self._default_source is not None:
+            if self._default_source is not None:
+                await self._switch.link(self._output.number, self._default_source)
+            elif self._current_source is not None:
+                await self._switch.link(self._output.number, self._current_source)
 
     async def async_select_source(self, source):
-        """Set the input source."""
-        if source in self._source_list:
-            source = self._reverse_mapping[source]
-        await self._switch.link(self._output.number, _parse_source(source))
+        """Set the source source."""
+        if source is not None:
+            if source in self._source_list:
+                source = self._reverse_mapping[source]
+            await self._switch.link(self._output.number, source)
+        else:
+            await self._switch.unlink(self._output.number)
 
-    async def async_select_sound_mode(self, mode: str):
+    async def async_select_sound_mode(self, sound_mode: str):
         """Set the sound mode."""
         stereo = False
         passthru = False
-        for m in mode.split(','):
+        for m in sound_mode.split(','):
             if m == 'stereo':
                 stereo = True
             elif m == 'mono':
@@ -330,13 +449,13 @@ class SavantAudioOutput(MediaPlayerEntity):
 
     async def async_join_players(self, group_members: list[str]) -> None:
         """Join `group_members` as a player group with the current player."""
-        output_ids = {
-            p.entity_id: p for p in self.hass.data[DOMAIN][KNOWN_OUTPUTS]
+        zone_ids = {
+            p.entity_id: p for p in self.hass.data[DOMAIN][KNOWN_ZONES]
         }
 
         for other_player in group_members:
-            if other := output_ids.get(other_player) and other._switch.host == self._switch.host:
-                await other.async_select_source(self._current_source)
+            if other := zone_ids.get(other_player) and other._switch.host == self._switch.host:
+                await other.async_select_source(self.source)
             else:
                 _LOGGER.info(
                     "Could not find player_id for %s. Not syncing", other_player
@@ -345,3 +464,10 @@ class SavantAudioOutput(MediaPlayerEntity):
     async def async_unjoin_player(self) -> None:
         """Remove this player from any group."""
         await self._switch.unlink(self._output.number)
+
+    @property
+    def icon(self):
+        if self.state == STATE_OFF or self.is_volume_muted:
+            return 'mdi:speaker-off'
+        else:
+            return 'mdi:speaker'
