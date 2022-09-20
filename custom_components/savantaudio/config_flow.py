@@ -3,8 +3,10 @@ import logging
 from typing import Any, Dict, Optional
 
 from homeassistant import config_entries, core
+from homeassistant.components import dhcp
 from homeassistant.const import CONF_ENABLED, CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
@@ -51,30 +53,70 @@ class SavantAudioCustomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     data: Optional[Dict[str, Any]]
 
+    def __init__(self):
+        self.discovered_ip = None
+        self.discovered_name = None
+
+    async def _async_validate_or_error(self, host, port: int = DEFAULT_PORT):
+        self._async_abort_entries_match({CONF_HOST: host})
+
+        info = {}
+        try:
+            switch = sa.Switch(host, port)
+            await switch.connect()
+
+            info = {CONF_HOST: host, CONF_PORT: port, "unique_id": switch.attributes['sn']}
+        except ValueError:
+            return None, "cannot_connect"
+
+        return info, None
+
     async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None):
         """Invoked when a user initiates a flow via the user interface."""
         _LOGGER.info(f'async_step_connect: {DOMAIN}')
         errors: Dict[str, str] = {}
         if user_input is not None:
-            try:
-                switch = sa.Switch(user_input[CONF_HOST], user_input[CONF_PORT])
-                await switch.connect()
-            except ValueError:
-                errors["base"] = "connect"
-            if not errors:
-                # Source is valid, set data.
-                await self.async_set_unique_id(switch.attributes['sn'])
-                self._abort_if_unique_id_configured(updates={CONF_HOST: user_input[CONF_HOST], CONF_PORT: user_input[CONF_PORT]})
+            info, error = await self._async_validate_or_error(user_input[CONF_HOST], user_input[CONF_PORT])
+            if error:
+                return self.async_abort(reason=error)
 
-                base_name = str(user_input[CONF_NAME]).lower().replace(' ','_')
+            await self.async_set_unique_id(info["unique_id"], raise_on_progress=False)
+            self._abort_if_unique_id_configured(updates={CONF_HOST: user_input[CONF_HOST], CONF_PORT: user_input[CONF_PORT]})
 
-                self.data = user_input
-                # Return the form of the next step.
-                return self.async_create_entry(title="Savant Audio", data=self.data)
+            self.data = user_input
+            # Return the form of the next step.
+            return self.async_create_entry(title="Savant Audio", data=self.data)
 
         return self.async_show_form(
             step_id="user", data_schema=USER_SCHEMA, errors=errors
         )
+
+    async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo) -> FlowResult:
+        """Handle DHCP discovery."""
+        self.discovered_ip = discovery_info.ip
+        self.discovered_name = discovery_info.hostname
+        return await self.async_step_discovery_confirm()
+
+    async def async_step_discovery_confirm(self):
+        """Confirm dhcp discovery."""
+        errors: Dict[str, str] = {}
+        # If we already have the host configured do
+        # not open connections to it if we can avoid it.
+        self.context[CONF_HOST] = self.discovered_ip
+        for progress in self._async_in_progress():
+            if progress.get("context", {}).get(CONF_HOST) == self.discovered_ip:
+                return self.async_abort(reason="already_in_progress")
+
+        self._async_abort_entries_match({CONF_HOST: self.discovered_ip})
+
+        info, error = await self._async_validate_or_error(self.discovered_ip)
+        if error:
+            return self.async_abort(reason=error)
+
+        await self.async_set_unique_id(info["unique_id"], raise_on_progress=False)
+        self._abort_if_unique_id_configured({CONF_HOST: self.discovered_ip})
+
+        return self.async_create_entry(title="Savant Audio", data=info)
 
     @staticmethod
     @callback
