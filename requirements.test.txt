@@ -1,4 +1,5 @@
 pytest
 pytest-cov==2.10.0
+paho-mqtt
 pytest-homeassistant-custom-component
 savantaudio-client==0.1.15
