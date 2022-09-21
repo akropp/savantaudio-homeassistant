@@ -2,8 +2,8 @@ from copy import deepcopy
 import logging
 from typing import Any, Dict, Optional
 
+# from homeassistant.components import dhcp
 from homeassistant import config_entries, core
-from homeassistant.components import dhcp
 from homeassistant.const import CONF_ENABLED, CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
@@ -63,11 +63,14 @@ class SavantAudioCustomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         info = {}
         try:
+            _LOGGER.debug(f'Trying to connect to switch on {host}:{port} with {sa} -> {sa.Switch}')
             switch = sa.Switch(host, port)
             await switch.connect()
+            _LOGGER.debug('Connected')
 
             info = {CONF_HOST: host, CONF_PORT: port, "unique_id": switch.attributes['sn']}
         except ValueError:
+            _LOGGER.exception(f"Failed to connect to switch at {host}:{port}")
             return None, "cannot_connect"
 
         return info, None
@@ -81,24 +84,22 @@ class SavantAudioCustomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if error:
                 return self.async_abort(reason=error)
 
-            _LOGGER.debug(f'async_step_user: {DOMAIN} got unique id {info["unique_id"]}')
             await self.async_set_unique_id(info["unique_id"], raise_on_progress=False)
             self._abort_if_unique_id_configured(updates={CONF_HOST: user_input[CONF_HOST], CONF_PORT: user_input[CONF_PORT]})
 
             self.data = user_input
             # Return the form of the next step.
-            _LOGGER.debug(f'async_step_user: {DOMAIN} creating entry data={self.data}')
             return self.async_create_entry(title="Savant Audio", data=self.data)
 
         return self.async_show_form(
             step_id="user", data_schema=USER_SCHEMA, errors=errors
         )
 
-    async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo) -> FlowResult:
-        """Handle DHCP discovery."""
-        self.discovered_ip = discovery_info.ip
-        self.discovered_name = discovery_info.hostname
-        return await self.async_step_discovery_confirm()
+    # async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo) -> FlowResult:
+    #     """Handle DHCP discovery."""
+    #     self.discovered_ip = discovery_info.ip
+    #     self.discovered_name = discovery_info.hostname
+    #     return await self.async_step_discovery_confirm()
 
     async def async_step_discovery_confirm(self):
         """Confirm dhcp discovery."""
