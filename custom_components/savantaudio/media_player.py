@@ -23,10 +23,11 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import RequiredParameterMissing, ServiceNotFound
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.util import slugify
 import savantaudio.client as sa
 from typing_extensions import Required
 import voluptuous as vol
@@ -125,6 +126,7 @@ async def async_setup_entry(
 
         # add device for switch
         device_registry = dr.async_get(hass)
+        entity_registry = er.async_get(hass)
 
         device_registry.async_get_or_create(
             config_entry_id=config_entry.entry_id,
@@ -138,6 +140,7 @@ async def async_setup_entry(
 
         sn = switch.attributes['sn']
         device_ids = []
+        entity_ids = []
         if CONF_SOURCES in config and CONF_ZONES in config:
             sources = {
                 int(source_id): extra[CONF_NAME] for source_id, extra in config[CONF_SOURCES].items() if extra.get(CONF_ENABLED, True)
@@ -156,8 +159,13 @@ async def async_setup_entry(
                     known_zones.append(zonedevice)
                     devices.append(zonedevice)
                     device_ids.append(zonedevice.unique_id)
+                    entity_ids.append(zonedevice.entity_id)
         if sn not in KNOWN_HOSTS:
             KNOWN_HOSTS.append(sn)
+        unknown_entities = [zone for zone in known_zones if zone.switch.attributes['sn'] == sn and zone.entity_id not in entity_ids]
+        for zone in unknown_entities:
+            entity_registry.async_remove(zone.entity_id)
+            _LOGGER.debug(f'Removed Zone Entity id={zone.entity_id}, name={zone.name}')
         unknown_zones = [zone for zone in known_zones if zone.switch.attributes['sn'] == sn and zone.unique_id not in device_ids]
         for zone in unknown_zones:
             known_zones.remove(zone)

@@ -14,6 +14,7 @@ from homeassistant.helpers.entity_registry import (
     async_entries_for_config_entry,
     async_get,
 )
+from homeassistant.util import slugify
 import savantaudio.client as sa
 import voluptuous as vol
 
@@ -205,7 +206,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         for source_id in SOURCE_RANGE:
             entry = self._updated_sources.get(str(source_id), None)
             if entry[CONF_ENABLED]:
-                sources_list[vol.Required(f'input_{source_id}', default=entry[CONF_NAME] if entry is not None else f'Input {source_id}')] = str
+                sources_list[vol.Optional(f'input_{source_id}', default=entry[CONF_NAME] if entry is not None else f'Input {source_id}')] = str
 
         return self.async_show_form(
             step_id="source_names", data_schema=vol.Schema(sources_list), errors=errors
@@ -265,7 +266,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         for zone_id in ZONE_RANGE:
             entry = self._updated_zones.get(str(zone_id), None)
             if entry[CONF_ENABLED]:
-                zones_list[vol.Required(f'zone_{zone_id}', default=entry[CONF_NAME] if entry is not None else f'Zone {zone_id}')] = str
+                zones_list[vol.Optional(f'zone_{zone_id}', default=entry[CONF_NAME] if entry is not None else f'Zone {zone_id}')] = str
 
         return self.async_show_form(
             step_id="zone_names", data_schema=vol.Schema(zones_list), errors=errors
@@ -299,21 +300,21 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             update_map = {f"media_player.{z['__entity_id']}": zone_id for zone_id, z in self._updated_zones.items() if '__entity_id' in z}
 
             # Remove any unchecked repos.
-            removed_zones = [
-                entity_id
-                for entity_id in zone_map.keys()
-                if entity_id not in update_map or self._updated_zones.get(update_map[entity_id], {CONF_ENABLED: False}).get(CONF_ENABLED, False) is False
-            ]
-            for entity_id in removed_zones:
-                # Unregister from HA
-                entity_registry.async_remove(entity_id)
-                # Remove from our configured repos.
-                zone_id = update_map.get(entity_id, None)
-                if zone_id is not None:
-                    self._updated_zones.pop(zone_id, None)
+            # removed_zones = [
+            #     entity_id
+            #     for entity_id in zone_map.keys()
+            #     if entity_id not in update_map or self._updated_zones.get(update_map[entity_id], {CONF_ENABLED: False}).get(CONF_ENABLED, False) is False
+            # ]
+            # for entity_id in removed_zones:
+            #     # Unregister from HA
+            #     entity_registry.async_remove(entity_id)
+            #     # Remove from our configured repos.
+            #     zone_id = update_map.get(entity_id, None)
+            #     if zone_id is not None:
+            #         self._updated_zones.pop(zone_id, None)
 
-            base_name = str(self.config_entry.data[CONF_NAME]).lower().replace(' ','_')
-            new_zones = {z.get('__entity_id',f'{base_name}_zone_{zone_id}'): z for zone_id, z in self._updated_zones.items()}
+            base_name = slugify(str(self.config_entry.data[CONF_NAME]))
+            new_zones = {f'{base_name}_{slugify(z.get(CONF_NAME,f"zone_{zone_id}"))}': z for zone_id, z in self._updated_zones.items()}
             for zone_id, z in new_zones.items():
                 z.pop('__entity_id', None)
 
