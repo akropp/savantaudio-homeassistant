@@ -22,6 +22,7 @@ from homeassistant.const import (
     STATE_ON,
 )
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import RequiredParameterMissing, ServiceNotFound
 from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -111,10 +112,16 @@ async def async_setup_entry(
     devices: list[SavantAudioZone] = []
 
     try:
-        port = config[CONF_PORT]
         host = config[CONF_HOST]
+        port = config.get(CONF_PORT, DEFAULT_PORT)
+        if host is None or port is None:
+            raise RequiredParameterMissing
+            
         switch = sa.Switch(host=host, port=port)
-        await switch.connect()
+        try:
+            await switch.connect()
+        except:
+            raise ServiceNotFound
 
         # add device for switch
         device_registry = dr.async_get(hass)
@@ -186,10 +193,17 @@ async def async_setup_platform(
     devices: list[SavantAudioZone] = []
 
     try:
-        port = config[CONF_PORT]
         host = config[CONF_HOST]
+        port = config.get(CONF_PORT, DEFAULT_PORT)
+        if host is None or port is None:
+            raise RequiredParameterMissing
+
         switch = sa.Switch(host=host, port=port)
-        await switch.connect()
+        try:
+            await switch.connect()
+        except:
+            raise ServiceNotFound
+
         if switch.attributes['sn'] in KNOWN_HOSTS:
             _LOGGER.info(f"Already added switch {switch.attributes['sn']} at {host}:{port}")
             return
@@ -227,6 +241,8 @@ async def async_setup_platform(
         KNOWN_HOSTS.append(switch.attributes['sn'])
     except OSError:
         _LOGGER.error("Unable to connect to Savant Audio Switch at %s:%d", host, port)
+    except:
+        raise
     async_add_entities(devices, True)
 
 

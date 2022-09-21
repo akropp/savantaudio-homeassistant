@@ -1,0 +1,8 @@
+__pycache__/
+
+.homeassistant/
+.mypy_cache/
+.pytest_cache/
+.idea/
+.coverage
+Pipfile
