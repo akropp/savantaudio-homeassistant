@@ -8,11 +8,5 @@
   "iot_class": "local_polling",
   "name": "Savant Audio",
   "requirements": ["savantaudio-client==0.1.15"],
-  "version": "0.1.3",
-  "dhcp": [
-    { "registered_devices": true },
-    {
-    "macaddress": "001AAE*"
-    }
-  ]
+  "version": "0.1.4"
 }

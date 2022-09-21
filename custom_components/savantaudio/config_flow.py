@@ -58,8 +58,8 @@ class SavantAudioCustomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.discovered_name = None
 
     async def _async_validate_or_error(self, host, port: int = DEFAULT_PORT):
-        _LOGGER.debug(f'_async_validate_or_error: {DOMAIN}, host={host}, port={port}')
         # self._async_abort_entries_match({CONF_HOST: host})
+        _LOGGER.debug(f'_async_validate_or_error: {DOMAIN}, host={host}, port={port}')
 
         info = {}
         try:
