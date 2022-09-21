@@ -58,6 +58,7 @@ class SavantAudioCustomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.discovered_name = None
 
     async def _async_validate_or_error(self, host, port: int = DEFAULT_PORT):
+        _LOGGER.debug(f'_async_validate_or_error: {DOMAIN}, host={host}, port={port}')
         self._async_abort_entries_match({CONF_HOST: host})
 
         info = {}
@@ -73,18 +74,20 @@ class SavantAudioCustomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None):
         """Invoked when a user initiates a flow via the user interface."""
-        _LOGGER.info(f'async_step_connect: {DOMAIN}')
+        _LOGGER.info(f'async_step_user: {DOMAIN}')
         errors: Dict[str, str] = {}
         if user_input is not None:
             info, error = await self._async_validate_or_error(user_input[CONF_HOST], user_input[CONF_PORT])
             if error:
                 return self.async_abort(reason=error)
 
+            _LOGGER.debug(f'async_step_user: {DOMAIN} got unique id {info["unique_id"]}')
             await self.async_set_unique_id(info["unique_id"], raise_on_progress=False)
             self._abort_if_unique_id_configured(updates={CONF_HOST: user_input[CONF_HOST], CONF_PORT: user_input[CONF_PORT]})
 
             self.data = user_input
             # Return the form of the next step.
+            _LOGGER.debug(f'async_step_user: {DOMAIN} creating entry data={self.data}')
             return self.async_create_entry(title="Savant Audio", data=self.data)
 
         return self.async_show_form(
