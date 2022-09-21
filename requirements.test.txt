@@ -1,4 +1,4 @@
 pytest
-pytest-cov==2.10.0
+pytest-cov==3.0.0
 pytest-homeassistant-custom-component==0.11.23
 savantaudio-client==0.1.15
