@@ -315,11 +315,10 @@ class SavantAudioZone(MediaPlayerEntity):
             self._pwstate = STATE_ON
         else:
             self._pwstate = STATE_OFF
-            self._attributes.pop(ATTR_PASSTHRU, None)
-            self._attributes.pop(ATTR_STEREO, None)
-            self._attributes.pop(ATTR_DELAY_LEFT, None)
-            self._attributes.pop(ATTR_DELAY_RIGHT, None)
-            return
+            # self._attributes.pop(ATTR_PASSTHRU, None)
+            # self._attributes.pop(ATTR_STEREO, None)
+            # self._attributes.pop(ATTR_DELAY_LEFT, None)
+            # self._attributes.pop(ATTR_DELAY_RIGHT, None)
 
     async def _sync_output(self):
         volume_raw = self._output.volume
@@ -417,6 +416,7 @@ class SavantAudioZone(MediaPlayerEntity):
     async def async_turn_off(self):
         """Turn the media player off."""
         await self._switch.unlink(self._output.number)
+        self._pwstate = STATE_OFF
 
     async def async_set_volume_level(self, volume):
         """
@@ -442,20 +442,25 @@ class SavantAudioZone(MediaPlayerEntity):
 
     async def async_turn_on(self):
         """Turn the media player on."""
-        if self._pwstate == STATE_OFF and self._default_source is not None:
-            if self._default_source is not None:
-                await self._switch.link(self._output.number, self._default_source)
-            elif self._current_source is not None:
+        if self._pwstate == STATE_OFF:
+            if self._current_source is not None:
                 await self._switch.link(self._output.number, self._current_source)
+            elif self._default_source is not None:
+                await self._switch.link(self._output.number, self._default_source)
+                self._current_source = self._default_source
+            self._pwstate = STATE_ON
 
     async def async_select_source(self, source):
         """Set the source source."""
         if source is not None:
             if source in self._source_list:
                 source = self._reverse_mapping[source]
-            await self._switch.link(self._output.number, source)
+            self._current_source = source
+            if self._pwstate == STATE_ON:
+                await self._switch.link(self._output.number, source)
         else:
             await self._switch.unlink(self._output.number)
+            self._current_source = None
 
     async def async_select_sound_mode(self, sound_mode: str):
         """Set the sound mode."""
@@ -488,6 +493,7 @@ class SavantAudioZone(MediaPlayerEntity):
     async def async_unjoin_player(self) -> None:
         """Remove this player from any group."""
         await self._switch.unlink(self._output.number)
+        self._current_source = None
 
     @property
     def icon(self):
