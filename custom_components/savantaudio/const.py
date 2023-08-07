@@ -1,6 +1,11 @@
 import savantaudio.client as sa
 
+NAME = "Savant Audio Switch Custom Component"
 DOMAIN = "savantaudio"
+VERSION = "0.1.12"
+
+ISSUE_URL = "https://github.com/akropp/savantaudio-homeassistant/issues"
+
 KNOWN_ZONES = "known_zones"
 KNOWN_HOSTS = "known_hosts"
 DEFAULT_PORT = 8085
@@ -17,3 +22,13 @@ CONF_ZONES = "zones"
 # platforms
 MEDIA_PLAYER = "media_player"
 PLATFORMS = [MEDIA_PLAYER]
+
+STARTUP_MESSAGE = f"""
+-------------------------------------------------------------------
+{NAME}
+Version: {VERSION}
+This is a custom integration!
+If you have any issues with this you need to open an issue here:
+{ISSUE_URL}
+-------------------------------------------------------------------
+"""

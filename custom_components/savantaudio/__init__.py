@@ -3,20 +3,23 @@ import asyncio
 import datetime
 import logging
 
-from homeassistant import config_entries, core
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import Config, HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 import homeassistant.helpers.config_validation as cv
 
-from .const import CONF_SOURCES, CONF_ZONES, DOMAIN, PLATFORMS
+from .const import CONF_SOURCES, CONF_ZONES, DOMAIN, PLATFORMS, STARTUP_MESSAGE
 
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
-    hass: core.HomeAssistant, entry: config_entries.ConfigEntry
+    hass: HomeAssistant, entry: config_entries.ConfigEntry
 ) -> bool:
     """Set up platform from a ConfigEntry."""
     _LOGGER.info(f'async_setup_entry: {DOMAIN}')
     if hass.data.get(DOMAIN) is None:
         hass.data.setdefault(DOMAIN, {})
+        _LOGGER.info(STARTUP_MESSAGE)
 
     config = dict(entry.data)
     # Update our config to include new repos and remove those that have been removed.
@@ -34,7 +37,7 @@ async def async_setup_entry(
     return True
 
 async def async_unload_entry(
-    hass: core.HomeAssistant, 
+    hass: HomeAssistant, 
     entry: config_entries.ConfigEntry
 ) -> bool:
     """Unload a config entry."""
@@ -52,12 +55,12 @@ async def async_unload_entry(
 
     return unload_ok
 
-async def update_listener(hass: core.HomeAssistant, config_entry: config_entries.ConfigEntry) -> None:
+async def update_listener(hass: HomeAssistant, config_entry: config_entries.ConfigEntry) -> None:
     """Update listener."""
     _LOGGER.info(f'update_listener: {DOMAIN}')
     await hass.config_entries.async_reload(config_entry.entry_id)
 
-async def async_setup(hass: core.HomeAssistant, config: dict) -> bool:
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Savant component from yaml configuration."""
     _LOGGER.info(f'async_setup: {DOMAIN}')
     hass.data.setdefault(DOMAIN, {})

@@ -5,13 +5,13 @@ import datetime
 from http.client import SWITCHING_PROTOCOLS
 import logging
 
+# from homeassistant.components.media_player.const import DOMAIN
 from homeassistant.components.media_player import (
     PLATFORM_SCHEMA,
     MediaPlayerDeviceClass,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
 )
-from homeassistant.components.media_player.const import DOMAIN
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_ENABLED,
