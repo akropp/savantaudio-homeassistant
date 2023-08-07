@@ -13,7 +13,7 @@ from .const import CONF_SOURCES, CONF_ZONES, DOMAIN, PLATFORMS, STARTUP_MESSAGE
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: config_entries.ConfigEntry
+    hass: HomeAssistant, entry: ConfigEntry
 ) -> bool:
     """Set up platform from a ConfigEntry."""
     _LOGGER.info(f'async_setup_entry: {DOMAIN}')
@@ -38,7 +38,7 @@ async def async_setup_entry(
 
 async def async_unload_entry(
     hass: HomeAssistant, 
-    entry: config_entries.ConfigEntry
+    entry: ConfigEntry
 ) -> bool:
     """Unload a config entry."""
     _LOGGER.info(f'async_unload_entry: {DOMAIN}')
@@ -55,7 +55,7 @@ async def async_unload_entry(
 
     return unload_ok
 
-async def update_listener(hass: HomeAssistant, config_entry: config_entries.ConfigEntry) -> None:
+async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Update listener."""
     _LOGGER.info(f'update_listener: {DOMAIN}')
     await hass.config_entries.async_reload(config_entry.entry_id)
