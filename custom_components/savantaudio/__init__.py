@@ -8,7 +8,7 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import CONF_SOURCES, CONF_ZONES, DOMAIN
 
-CONFIG_SCHEMA = cv.platform_only_config_schema
+CONFIG_SCHEMA = cv.empty_config_schema
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,8 +16,9 @@ async def async_setup_entry(
     hass: core.HomeAssistant, entry: config_entries.ConfigEntry
 ) -> bool:
     """Set up platform from a ConfigEntry."""
-    _LOGGER.info(f'async_setup_entry: {DOMAIN}')
-    hass.data.setdefault(DOMAIN, {})
+    if hass.data.get(DOMAIN) is None:
+        _LOGGER.info(f'async_setup_entry: {DOMAIN}')
+        hass.data.setdefault(DOMAIN, {})
 
     config = dict(entry.data)
     # Update our config to include new repos and remove those that have been removed.
@@ -56,7 +57,7 @@ async def update_listener(hass: core.HomeAssistant, config_entry: config_entries
     await hass.config_entries.async_reload(config_entry.entry_id)
 
 async def async_setup(hass: core.HomeAssistant, config: dict) -> bool:
-    """Set up the GitHub Custom component from yaml configuration."""
+    """Set up the Savant component from yaml configuration."""
     _LOGGER.info(f'async_setup: {DOMAIN}')
     hass.data.setdefault(DOMAIN, {})
     return True
