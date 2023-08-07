@@ -16,8 +16,8 @@ async def async_setup_entry(
     hass: core.HomeAssistant, entry: config_entries.ConfigEntry
 ) -> bool:
     """Set up platform from a ConfigEntry."""
+    _LOGGER.info(f'async_setup_entry: {DOMAIN}')
     if hass.data.get(DOMAIN) is None:
-        _LOGGER.info(f'async_setup_entry: {DOMAIN}')
         hass.data.setdefault(DOMAIN, {})
 
     config = dict(entry.data)
@@ -54,6 +54,7 @@ async def async_unload_entry(
 
 async def update_listener(hass: core.HomeAssistant, config_entry: config_entries.ConfigEntry) -> None:
     """Update listener."""
+    _LOGGER.info(f'update_listener: {DOMAIN}')
     await hass.config_entries.async_reload(config_entry.entry_id)
 
 async def async_setup(hass: core.HomeAssistant, config: dict) -> bool:

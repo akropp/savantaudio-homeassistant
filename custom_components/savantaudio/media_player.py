@@ -195,6 +195,7 @@ async def async_setup_entry(
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    _LOGGER.info(f'media_player.async_unload_entry: {DOMAIN}')
     known_zones = hass.data[DOMAIN].setdefault(KNOWN_ZONES, [])
     to_remove = [ zone for zone in known_zones if zone.switch.attributes['sn'] == entry.unique_id ]
     for zone in to_remove:
@@ -265,6 +266,7 @@ async def async_setup_platform(
         _LOGGER.error("Unable to connect to Savant Audio Switch at %s:%d", host, port)
     except:
         raise
+    _LOGGER.info(f'media_player.async_setup_entry: {DOMAIN}: calling async_add_entities')
     async_add_entities(devices, True)
 
 
