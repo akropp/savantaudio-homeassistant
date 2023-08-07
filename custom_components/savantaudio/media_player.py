@@ -41,11 +41,6 @@ from .const import (
     DEFAULT_SOURCE,
     DOMAIN,
     KNOWN_ZONES,
-    PLATFORM_SCHEMA,
-    SOURCE_IDS,
-    SOURCE_SCHEMA,
-    ZONE_IDS,
-    ZONE_SCHEMA,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,6 +70,29 @@ SOUND_MODE_LIST = ['stereo', 'mono', 'stereo,passthru', 'mono,passthru']
 DEFAULT_SOURCES = { n: {"name": f'Source {n}'} for n in range(1,32) }
 DEFAULT_ZONES = { n: {"name": f'Zone {n}', DEFAULT_SOURCE: None} for n in range(1,20) }
 
+SOURCE_IDS = vol.All(vol.Coerce(int), vol.Range(min=1, max=32))
+SOURCE_SCHEMA = vol.Schema({
+    vol.Required(CONF_NAME, default="Unknown Source"): cv.string,
+    vol.Required(CONF_ENABLED, default=True): bool,
+})
+
+ZONE_IDS = vol.All( vol.Coerce(int), vol.Range(min=1, max=20) )
+ZONE_SCHEMA = vol.Schema({
+    vol.Required(CONF_NUMBER): ZONE_IDS,
+    vol.Required(CONF_NAME, default="Audio Zone"): cv.string,
+    vol.Optional(DEFAULT_SOURCE): cv.positive_int,
+    vol.Required(CONF_ENABLED, default=True): bool,
+})
+
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+    {
+        vol.Required(CONF_HOST): cv.string,
+        vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
+        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+        vol.Required(CONF_ZONES): vol.Schema({cv.string: ZONE_SCHEMA}),
+        vol.Required(CONF_SOURCES): vol.Schema({SOURCE_IDS: SOURCE_SCHEMA}),
+    }
+)
 
 SOURCE_IDS = vol.All(vol.Coerce(int), vol.Range(min=1, max=32))
 SOURCE_SCHEMA = vol.Schema({

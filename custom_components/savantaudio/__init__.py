@@ -4,8 +4,11 @@ import datetime
 import logging
 
 from homeassistant import config_entries, core
+import homeassistant.helpers.config_validation as cv
 
-from .const import CONF_SOURCES, CONF_ZONES, DOMAIN, PLATFORM_SCHEMA
+from .const import CONF_SOURCES, CONF_ZONES, DOMAIN
+
+CONFIG_SCHEMA = cv.platform_only_config_schema
 
 _LOGGER = logging.getLogger(__name__)
 
