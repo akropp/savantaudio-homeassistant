@@ -22,7 +22,9 @@ async def test_setup_unload_and_reload_entry(hass, bypass_get_data):
     m_instance.getitem = AsyncMock()
 
     # Create a mock entry so we don't have to go through config flow
-    config_entry = MockConfigEntry(domain=DOMAIN, data=MOCK_CONFIG, entry_id="test")
+    config_entry = MockConfigEntry(
+        domain=DOMAIN, data=MOCK_CONFIG, entry_id="test", unique_id="savantaudio-test"
+    )
 
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
