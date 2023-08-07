@@ -13,3 +13,7 @@ ZONE_RANGE = range(1,21)
 
 CONF_SOURCES = "sources"
 CONF_ZONES = "zones"
+
+# platforms
+MEDIA_PLAYER = "media_player"
+PLATFORMS = [MEDIA_PLAYER]
