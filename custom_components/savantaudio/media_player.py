@@ -41,6 +41,11 @@ from .const import (
     DEFAULT_SOURCE,
     DOMAIN,
     KNOWN_ZONES,
+    PLATFORM_SCHEMA,
+    SOURCE_IDS,
+    SOURCE_SCHEMA,
+    ZONE_IDS,
+    ZONE_SCHEMA,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,15 +90,6 @@ ZONE_SCHEMA = vol.Schema({
     vol.Required(CONF_ENABLED, default=True): bool,
 })
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_HOST): cv.string,
-        vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Required(CONF_ZONES): vol.Schema({cv.string: ZONE_SCHEMA}),
-        vol.Required(CONF_SOURCES): vol.Schema({SOURCE_IDS: SOURCE_SCHEMA}),
-    }
-)
 
 SCAN_INTERVAL = datetime.timedelta(minutes=1)
 

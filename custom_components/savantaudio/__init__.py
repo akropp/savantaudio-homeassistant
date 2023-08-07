@@ -5,7 +5,7 @@ import logging
 
 from homeassistant import config_entries, core
 
-from .const import CONF_SOURCES, CONF_ZONES, DOMAIN
+from .const import CONF_SOURCES, CONF_ZONES, DOMAIN, PLATFORM_SCHEMA
 
 _LOGGER = logging.getLogger(__name__)
 
