@@ -1,12 +1,12 @@
 {
+  "domain": "savantaudio",
+  "name": "Savant Audio",
   "codeowners": ["@akropp"],
   "config_flow": true,
-  "dependencies": [],
   "documentation": "https://github.com/akropp/savantaudio-homeassistant/",
-  "issue_tracker": "https://github.com/akropp/savantaudio-homeassistant/issues",
-  "domain": "savantaudio",
+  "dependencies": [],
   "iot_class": "local_polling",
-  "name": "Savant Audio",
+  "issue_tracker": "https://github.com/akropp/savantaudio-homeassistant/issues",
   "requirements": ["savantaudio-client==0.1.19"],
   "version": "0.1.11"
 }
