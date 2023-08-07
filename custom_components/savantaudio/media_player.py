@@ -22,7 +22,7 @@ from homeassistant.const import (
     STATE_ON,
 )
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import RequiredParameterMissing, ServiceNotFound
+from homeassistant.exceptions import ConfigEntryError, HomeAssistantError
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -122,7 +122,7 @@ async def async_setup_entry(
         try:
             await switch.connect()
         except:
-            raise ServiceNotFound
+            raise HomeAssistantError
 
         # add device for switch
         device_registry = dr.async_get(hass)
@@ -204,13 +204,13 @@ async def async_setup_platform(
         host = config[CONF_HOST]
         port = config.get(CONF_PORT, DEFAULT_PORT)
         if host is None or port is None:
-            raise RequiredParameterMissing
+            raise ConfigEntryError(f'missing host or port')
 
         switch = sa.Switch(host=host, port=port)
         try:
             await switch.connect()
         except:
-            raise ServiceNotFound
+            raise HomeAssistantError
 
         if switch.attributes['sn'] in KNOWN_HOSTS:
             _LOGGER.info(f"Already added switch {switch.attributes['sn']} at {host}:{port}")
