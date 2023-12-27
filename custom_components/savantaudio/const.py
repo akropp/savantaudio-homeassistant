@@ -2,7 +2,7 @@ import savantaudio.client as sa
 
 NAME = "Savant Audio Switch Custom Component"
 DOMAIN = "savantaudio"
-VERSION = "0.1.12"
+VERSION = "1.0.0"
 
 ISSUE_URL = "https://github.com/akropp/savantaudio-homeassistant/issues"
 
