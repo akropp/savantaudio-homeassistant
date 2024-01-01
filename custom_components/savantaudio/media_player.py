@@ -344,7 +344,7 @@ class SavantAudioZone(MediaPlayerEntity):
         self._volume = (volume_raw + 38.0) / 38.0
 
         self._attributes[ATTR_PASSTHRU] = self._output.passthru
-        self._attributes[ATTR_STEREO] = ~self._output.mono
+        self._attributes[ATTR_STEREO] = self._output.stereo
         self._attributes[ATTR_DELAY_LEFT] = self._output.delay[0]
         self._attributes[ATTR_DELAY_RIGHT] = self._output.delay[1]
 
@@ -414,10 +414,10 @@ class SavantAudioZone(MediaPlayerEntity):
     @property
     def sound_mode(self):
         modes = []
-        if self._output.mono:
-            modes.append('mono')
-        else:
+        if self._output.stereo:
             modes.append('stereo')
+        else:
+            modes.append('mono')
         if self._output.passthru: modes.append('passthru')
         return ','.join(modes)
 
