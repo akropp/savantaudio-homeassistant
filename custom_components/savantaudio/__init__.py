@@ -4,7 +4,8 @@ import datetime
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import Config, HomeAssistant
+from homeassistant.core import HomeAssistant
+from homeassistant.core_config import Config
 from homeassistant.exceptions import ConfigEntryNotReady
 import homeassistant.helpers.config_validation as cv
 
@@ -32,7 +33,7 @@ async def async_setup_entry(
     # Forward the setup to the media_player platform.
     for platform in PLATFORMS:
         hass.async_add_job(
-            hass.config_entries.async_forward_entry_setup(entry, platform)
+            await hass.config_entries.async_forward_entry_setups(entry, [platform])
         )
     return True
 
