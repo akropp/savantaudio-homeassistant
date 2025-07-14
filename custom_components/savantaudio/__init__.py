@@ -31,9 +31,7 @@ async def async_setup_entry(
 
     # Forward the setup to the media_player platform.
     for platform in PLATFORMS:
-        hass.async_add_job(
-            await hass.config_entries.async_forward_entry_setups(entry, [platform])
-        )
+        await hass.config_entries.async_forward_entry_setups(entry, [platform])
     return True
 
 async def async_unload_entry(
