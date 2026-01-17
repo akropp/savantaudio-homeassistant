@@ -11,4 +11,4 @@ def test_domain_constant():
 
 def test_version():
     """Test version is defined correctly."""
-    assert VERSION == "1.0.3"
+    assert VERSION == "1.0.5"
