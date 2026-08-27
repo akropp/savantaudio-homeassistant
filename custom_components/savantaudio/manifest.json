@@ -7,6 +7,6 @@
   "documentation": "https://github.com/akropp/savantaudio-homeassistant/",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/akropp/savantaudio-homeassistant/issues",
-  "requirements": ["savantaudio-client==1.0.1"],
+  "requirements": ["savantaudio-client @ git+https://github.com/blairheuer/savantaudio-client.git@main"],
   "version": "1.0.5"
 }
