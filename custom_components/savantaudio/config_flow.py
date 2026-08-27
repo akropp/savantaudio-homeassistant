@@ -134,7 +134,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handles options flow for the component."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
+        # HA >= 2024.11 exposes `config_entry` as a read-only property on
+        # OptionsFlow and populates it automatically. Assigning to it raises
+        # AttributeError, which surfaces in the frontend as a 500 when the
+        # options flow is instantiated.
         self._updated_sources = {}
         self._updated_zones = {}
 
