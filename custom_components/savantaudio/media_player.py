@@ -119,6 +119,13 @@ SCAN_INTERVAL = datetime.timedelta(minutes=1)
 IDLE_DISCONNECT = datetime.timedelta(seconds=20)
 IDLE_CHECK_INTERVAL = datetime.timedelta(seconds=10)
 
+# dB window the 0..1 volume slider maps onto. The switch accepts down to -38dB
+# via the client, but line level into a typical distribution amp is painfully
+# loud well before 0dB, which wastes most of the slider. Narrowing the ceiling
+# spreads the useful listening range across the full control.
+VOLUME_MIN_DB = -38.0
+VOLUME_MAX_DB = -15.0
+
 
 TIMEOUT_MESSAGE = "Timeout waiting for response."
 
@@ -361,8 +368,12 @@ class SavantAudioZone(MediaPlayerEntity):
         volume_raw = self._output.volume
         self._mute = self._output.mute
 
-        # savant volume is between -38dB and 0dB
-        self._volume = (volume_raw + 38.0) / 38.0
+        # Map the switch's dB level onto 0..1 across the configured window.
+        # Clamped because the level can be set outside that window by the
+        # Savant host or the front panel, and Home Assistant rejects a
+        # volume_level outside 0..1.
+        span = VOLUME_MAX_DB - VOLUME_MIN_DB
+        self._volume = max(0.0, min(1.0, (volume_raw - VOLUME_MIN_DB) / span))
 
         self._attributes[ATTR_PASSTHRU] = self._output.passthru
         self._attributes[ATTR_STEREO] = self._output.stereo
@@ -459,9 +470,11 @@ class SavantAudioZone(MediaPlayerEntity):
         """
         Set volume level, source is range 0..1.
 
-        For the switch, the actual volume level is -38..0
+        Mapped onto VOLUME_MIN_DB..VOLUME_MAX_DB rather than the switch's full
+        range, so the whole slider covers usable listening levels.
         """
-        await self._output.set_volume(int(volume * 38.0 - 38.0))
+        span = VOLUME_MAX_DB - VOLUME_MIN_DB
+        await self._output.set_volume(int(VOLUME_MIN_DB + volume * span))
 
     async def async_volume_up(self):
         """Increase volume by 1 step."""
