@@ -26,6 +26,7 @@ from homeassistant.exceptions import ConfigEntryError, HomeAssistantError
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import slugify
 import savantaudio.client as sa
@@ -111,6 +112,13 @@ ZONE_SCHEMA = vol.Schema({
 
 SCAN_INTERVAL = datetime.timedelta(minutes=1)
 
+# The switch accepts a very limited number of simultaneous control sessions,
+# and the client library holds its socket open indefinitely once opened. That
+# can lock out the Savant host, which needs the same port. Close the connection
+# once it has been idle for IDLE_DISCONNECT; the library reconnects on demand.
+IDLE_DISCONNECT = datetime.timedelta(seconds=20)
+IDLE_CHECK_INTERVAL = datetime.timedelta(seconds=10)
+
 
 TIMEOUT_MESSAGE = "Timeout waiting for response."
 
@@ -137,6 +145,19 @@ async def async_setup_entry(
             await switch.connect()
         except:
             raise HomeAssistantError
+
+        async def _idle_disconnect(now) -> None:
+            """Release the control socket once it has gone quiet."""
+            connection = switch._connection
+            if connection._writer is None:
+                return
+            if datetime.datetime.now() - connection._ts >= IDLE_DISCONNECT:
+                _LOGGER.debug("Closing idle connection to %s:%d", host, port)
+                await connection.close()
+
+        config_entry.async_on_unload(
+            async_track_time_interval(hass, _idle_disconnect, IDLE_CHECK_INTERVAL)
+        )
 
         # add device for switch
         device_registry = dr.async_get(hass)
