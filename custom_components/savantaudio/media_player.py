@@ -480,11 +480,22 @@ class SavantAudioZone(MediaPlayerEntity):
     async def async_turn_on(self):
         """Turn the media player on."""
         if self._pwstate == STATE_OFF:
-            if self._current_source is not None:
-                await self._switch.link(self._output.number, self._current_source)
-            elif self._default_source is not None:
-                await self._switch.link(self._output.number, self._default_source)
-                self._current_source = self._default_source
+            source = self._current_source
+            if source is None:
+                source = self._default_source
+            if source is None and self._source_mapping:
+                # No default configured and nothing previously selected. Any
+                # enabled source is a better outcome than silently doing
+                # nothing, which leaves the entity reporting on while the
+                # output stays unlinked.
+                source = sorted(self._source_mapping)[0]
+            if source is None:
+                _LOGGER.warning(
+                    "Cannot turn on %s: no sources are enabled", self.name
+                )
+                return
+            await self._switch.link(self._output.number, source)
+            self._current_source = source
             self._pwstate = STATE_ON
 
     async def async_select_source(self, source):
@@ -493,11 +504,15 @@ class SavantAudioZone(MediaPlayerEntity):
             if source in self._source_list:
                 source = self._reverse_mapping[source]
             self._current_source = source
-            if self._pwstate == STATE_ON:
-                await self._switch.link(self._output.number, source)
+            # Link unconditionally: selecting a source means "play this", and
+            # gating on power state made the call a no-op on any zone that was
+            # not already routed.
+            await self._switch.link(self._output.number, source)
+            self._pwstate = STATE_ON
         else:
             await self._switch.unlink(self._output.number)
             self._current_source = None
+            self._pwstate = STATE_OFF
 
     async def async_select_sound_mode(self, sound_mode: str):
         """Set the sound mode."""
