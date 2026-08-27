@@ -33,9 +33,21 @@ You can setup multiple integrations with different hostnames/ip addresses.
 
 Configuration > [Integrations](https://my.home-assistant.io/redirect/integrations/) > **SavantAudio** > Configure
 
+**This is how sources and zones are configured.** The Configure wizard walks
+through selecting which inputs are in use, naming them, selecting which outputs
+are in use, naming them, and choosing a default source per zone. Entities are
+created for enabled outputs only, so a freshly added integration shows a device
+with no entities until this flow is completed.
+
 ## Configuration YAML
 
-These settings are made via [YAML](https://www.home-assistant.io/docs/configuration/).
+Adding a `savantaudio:` block to `configuration.yaml` has **no effect**. The
+integration defines no `CONFIG_SCHEMA`, so such a block is parsed and discarded;
+all settings come from the config entry created by the flows above.
+
+The schema below describes the shape of that stored configuration, for reference
+when inspecting `.storage/core.config_entries` or when using the legacy
+`media_player` platform setup.
 
 ```yaml
 savantaudio:
