@@ -389,7 +389,7 @@ class SavantAudioZone(MediaPlayerEntity):
 
     @property
     def device_info(self):
-        return {
+        info = {
             "identifiers": {
                 # Serial numbers are unique identifiers within a specific domain
                 (DOMAIN, self.unique_id)
@@ -399,8 +399,18 @@ class SavantAudioZone(MediaPlayerEntity):
             "model": str(self._switch.model),
             "sw_version": self._switch.attributes['fwrev'],
             "hw_version": self._switch.attributes['rev'],
-            "via_device": (DOMAIN, self._switch.attributes['sn']),
         }
+        # HA 2026.9 dropped the `via_device` identifier tuple in favour of
+        # `via_device_id`, which wants the parent's device registry id. Look the
+        # switch up rather than hard-failing: device_info is also read outside the
+        # entity lifecycle (zone cleanup in async_setup_entry), where hass is unset.
+        if (hass := getattr(self, "hass", None)) is not None:
+            parent = dr.async_get(hass).async_get_device(
+                identifiers={(DOMAIN, self._switch.attributes['sn'])}
+            )
+            if parent is not None:
+                info["via_device_id"] = parent.id
+        return info
 
     @property
     def switch(self):
